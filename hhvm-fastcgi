@@ -1,0 +1,98 @@
+#!/bin/sh
+#
+# chkconfig: - 84 16
+# description:	The HHVM FastCGI Daemon
+# processname: hhvm-fastcgi
+# config: /etc/hhvm/server.hdf
+# config: /etc/sysconfig/hhvm-fastcgi
+# pidfile: /var/run/hhvm-fastcgi.pid
+# /etc/init.d/hhvm-fastcgi -- startup script for HHVM FastCGI
+#
+### BEGIN INIT INFO
+# Provides:          hhvm-fastcgi
+# Required-Start:    $remote_fs $network
+# Required-Stop:     $remote_fs $network
+# Description:       Starts The HHVM FastCGI Daemon
+### END INIT INFO
+
+
+# Standard LSB functions
+#. /lib/lsb/init-functions
+
+# Source function library.
+. /etc/init.d/functions
+
+# Check that networking is up.
+. /etc/sysconfig/network
+
+
+
+if [ -f /etc/sysconfig/hhvm-fastcgi ]; then
+        . /etc/sysconfig/hhvm-fastcgi
+fi
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+DESC="HHVM FastCGI Daemon"
+SCRIPTNAME=/etc/init.d/$NAME
+
+RETVAL=0
+
+prog=hhvm-fastcgi
+lockfile="/var/lock/subsys/${prog}"
+pidfile="/var/run/${prog}.pid"
+configfile="/etc/hhvm/server.hdf"
+
+ADDITIONAL_OPTS=""
+DAEMON_OPTS="--config ${configfile} \
+			--mode daemon \
+			-vServer.Type=fastcgi \
+			-vServer.Port=9001 \
+			-vPidFile=${pidfile} \
+			${ADDITIONAL_OPTS}"
+
+
+start() {
+		if [ -e $lockfile ];then
+			echo "$prog already running...."
+			exit 1
+		fi
+
+        echo -n $"Starting $prog: "
+	    daemon hhvm $DAEMON_OPTS 
+        RETVAL=$?
+		echo 
+		[ $RETVAL -eq 0 ] && touch ${lockfile}
+	    return $RETVAL
+}
+
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc -p $pidfile $prog
+    RETVAL=$?
+    echo
+    [ $RETVAL -eq 0 ] && rm -f $lockfile
+    return $RETVAL
+}
+
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        status -p ${pidfile} 
+        RETVAL=$?
+        ;;
+  restart)
+        stop
+        start
+        ;;
+  *)
+        echo $"Usage: $prog {start|stop|restart}"
+        RETVAL=2
+esac
+
+exit $RETVAL
